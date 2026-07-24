@@ -26,16 +26,17 @@ jobs:
         shell: bash
         run: |
           for i in {1..30}; do
-            for endpoint in /health /api/health /; do
-              code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:5000${endpoint}" || true)
-              if [ -z "$code" ]; then
-                code="000"
-              fi
-              if [ "$code" = "200" ]; then
-                echo "AgileConfig is ready via ${endpoint}"
-                exit 0
-              fi
-            done
+            page=$(curl -sS -L --max-time 5 "http://localhost:5000/ui" || true)
+            if [ -n "$page" ] && echo "$page" | grep -qi "AgileConfig"; then
+              echo "AgileConfig is ready via /ui"
+              exit 0
+            fi
+
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://localhost:5000/ui" || true)
+            if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then
+              echo "AgileConfig UI endpoint is reachable with status ${code}"
+              exit 0
+            fi
             sleep 2
           done
           echo "AgileConfig did not become ready in time"
