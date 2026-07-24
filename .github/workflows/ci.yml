@@ -27,7 +27,10 @@ jobs:
         run: |
           for i in {1..30}; do
             for endpoint in /health /api/health /; do
-              code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:5000${endpoint}")
+              code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:5000${endpoint}" || true)
+              if [ -z "$code" ]; then
+                code="000"
+              fi
               if [ "$code" = "200" ]; then
                 echo "AgileConfig is ready via ${endpoint}"
                 exit 0
