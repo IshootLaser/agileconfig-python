@@ -166,6 +166,8 @@ class AgileConfigLoader:
             self._ws_client = None
         if self._running_thread:
             self._running_thread.join(timeout=5)
+            if self._running_thread.is_alive():
+                raise RuntimeError('Failed to stop AgileConfig listener thread within timeout.')
             self._running_thread = None
         self._ready = False
         self._config_cache = {}
