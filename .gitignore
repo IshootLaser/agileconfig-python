@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Test and coverage output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.pytest_cache/
+agile-config-data/
+
+# Packaging output
+build/
+dist/
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

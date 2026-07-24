@@ -1,0 +1,21 @@
+services:
+  agile-config:
+    image: kklldog/agile_config:v-1.12.1
+    ports:
+      - "5000:5000"
+    environment:
+      adminConsole: "true"
+      saPassword: "admin123"
+      db__provider: "sqlite"
+      db__conn: "Data Source=/app/db/agile_config.db"
+    volumes:
+      - agile-config-data:/app/db
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: "512M"
+    restart: unless-stopped
+
+volumes:
+  agile-config-data:

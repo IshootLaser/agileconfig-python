@@ -1,0 +1,44 @@
+ [build-system]
+ requires = ["setuptools>=83.0.0", "wheel"]
+ build-backend = "setuptools.build_meta"
+
+ [project]
+ name = "agileconfig-python"
+ version = "0.1.0"
+ description = "Python client for AgileConfig with WebSocket updates and environment fallback"
+ readme = "README.md"
+ requires-python = ">=3.9"
+ license = { file = "LICENSE" }
+ authors = [
+	 { name = "Wei Zheng" },
+ ]
+ classifiers = [
+	 "Development Status :: 3 - Alpha",
+	 "Intended Audience :: Developers",
+	 "License :: OSI Approved :: MIT License",
+	 "Programming Language :: Python :: 3",
+	 "Programming Language :: Python :: 3 :: Only",
+	 "Programming Language :: Python :: 3.9",
+	 "Programming Language :: Python :: 3.10",
+	 "Programming Language :: Python :: 3.11",
+	 "Programming Language :: Python :: 3.12",
+	 "Programming Language :: Python :: 3.13",
+	 "Topic :: Software Development :: Libraries",
+ ]
+ dependencies = [
+	 "requests>=2.31",
+	 "websockets>=15,<16",
+ ]
+
+ [tool.setuptools.packages.find]
+ include = ["agileconfig_python*"]
+
+ [tool.setuptools]
+ include-package-data = true
+
+ [tool.pytest.ini_options]
+ addopts = "-ra"
+
+ [tool.coverage.run]
+ branch = true
+ source = ["agileconfig_python"]
