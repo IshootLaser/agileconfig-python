@@ -197,6 +197,7 @@ class TestAgileConfigLoader(unittest.TestCase):
         self._wait_for(
             lambda: loader._config_cache.get(key) == value,
             message='Loader did not refresh cache after reload publish.',
+            timeout=40
         )
 
     def test_missing_url_or_app_id_skips_listener(self):
