@@ -101,7 +101,7 @@ class AgileConfigLoader:
 
     def _get_config_from_server(self):
         url = f'{self._http_url_parser()}/api/config/app/{self._app_id}'
-        r = requests.get(url, headers=self._headers, params={'env': self._env}, timeout=0.3)
+        r = requests.get(url, headers=self._headers, params={'env': self._env}, timeout=5.0)
         r.raise_for_status()
         configs = {
             f'{_["group"]}:{_["key"]}' if _["group"] else _["key"]: _['value']
@@ -112,7 +112,7 @@ class AgileConfigLoader:
     def _start_config_listener(self):
         self._start_event.set()
         while not self._stop_event.wait(1):
-            if not self._lock.acquire_lock(timeout=1):
+            if not self._lock.acquire(timeout=1):
                 logger.warning('Failed to acquire lock for AgileConfig listener. Retrying...')
                 continue
             logger.info('lock acquired before initiating websocket connection.')
