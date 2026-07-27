@@ -74,7 +74,7 @@ class TestAgileConfigLoader(unittest.TestCase):
             params={'env': APP_ENV},
             json={'appId': APP_ID, 'env': APP_ENV, 'log': 'unit test seed'},
         )
-        print(out.json())
+        print('admin payload is:', out.json())
 
     @classmethod
     def setUpClass(cls):
