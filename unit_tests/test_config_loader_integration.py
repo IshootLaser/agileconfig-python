@@ -6,6 +6,7 @@ import requests
 
 from agileconfig_python import AgileConfigLoader
 from agileconfig_python.config_loader import logger
+from agileconfig_python import config_loader
 
 
 WS_URL = 'ws://localhost:5000/ws'
@@ -74,7 +75,7 @@ class TestAgileConfigLoader(unittest.TestCase):
             params={'env': APP_ENV},
             json={'appId': APP_ID, 'env': APP_ENV, 'log': 'unit test seed'},
         )
-        print('admin payload is:', out.json())
+        print('admin response is:', out.json())
 
     @classmethod
     def setUpClass(cls):
@@ -94,12 +95,22 @@ class TestAgileConfigLoader(unittest.TestCase):
                    'enabled': True, 'envs': APP_ENV}
             cls._admin_request('POST', '/App/Add', json=app)
             cls._admin_request('POST', '/App/Edit', json=app)
+            # Register the local node so the server dispatches WebSocket reload
+            # messages. The reload dispatch iterates registered nodes and calls
+            # each node's /RemoteOP/AppClientsDoAction HTTP endpoint. Without a
+            # registered node the loop is empty and no reload is ever sent.
+            cls._admin_request(
+                'POST',
+                '/ServerNode/Add',
+                json={'address': 'http://localhost:5000', 'remark': 'test node'}
+            )
             cls._seed(cls.BASELINE)
         except requests.exceptions.RequestException as exc:
             raise unittest.SkipTest(f'AgileConfig is not available: {exc}')
 
         AgileConfigLoader._instance = None
         cls.loader = AgileConfigLoader(WS_URL, APP_ID, APP_SECRET, APP_ENV)
+        config_loader.AGILE_CONFIG_TIMEOUT = 5
 
     @classmethod
     def tearDownClass(cls):

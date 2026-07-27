@@ -132,26 +132,21 @@ class AgileConfigLoader:
                     self._lock.release()
                     logger.info('lock released after a successful websocket connection')
 
-                    # Subscribe to config updates for this app/env
-                    subscription = json.dumps({
-                        'Action': 'subscribe',
-                        'AppId': self._app_id,
-                        'Env': self._env,
-                    })
-                    self._ws_client.send(subscription)
-                    logger.info(f'Sent subscription message for {self._app_id}/{self._env}')
-
                     self._get_config_from_server()
                     self._use_os_env_fallback = False
                     self._updated_event.set()
-                    logger.info(f'Successfully retrieved config from AgileConfig server at {self._url}')
+                    logger.info(f'Successfully retrieved config from AgileConfig server at {self._http_url_parser()}')
 
                     logger.info(f"Successfully connected to AgileConfig ws at {self._url}")
                     for msg in self._ws_client:
                         logger.info(f'Received message {msg} from {self._url}')
-                        if json.loads(msg)['Action'] == 'reload':
-                            self._get_config_from_server()
-                            logger.info('Successfully updated config.')
+                        try:
+                            parsed = json.loads(msg)
+                            if isinstance(parsed, dict) and parsed.get('Action') == 'reload':
+                                self._get_config_from_server()
+                                logger.info('Successfully updated config.')
+                        except (json.JSONDecodeError, TypeError):
+                            pass
             except TimeoutError as e:
                 logger.warning(f'Encountered timeout error: {e.__repr__()}. Will retry.')
             except requests.exceptions.HTTPError as e:
