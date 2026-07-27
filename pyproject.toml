@@ -30,6 +30,10 @@
 	 "websockets>=15,<16",
  ]
 
+[project.urls]
+Homepage = "https://github.com/IshootLaser/agileconfig-python"
+Repository = "https://github.com/IshootLaser/agileconfig-python"
+
  [tool.setuptools.packages.find]
  include = ["agileconfig_python*"]
 
