@@ -114,6 +114,7 @@ class TestAgileConfigLoader(unittest.TestCase):
         loader._url = url
         loader._app_id = app_id
         loader._terminated = False
+        loader.clear_cache()
         if start:
             loader.start()
         return loader
@@ -168,6 +169,7 @@ class TestAgileConfigLoader(unittest.TestCase):
         os.environ['FALLBACK_TEST_VAR'] = 'fallback-value'
         try:
             value = loader.get_var_value('FALLBACK_TEST_VAR', prefix='ignored')
+            self.assertIsNone(loader._ws_client)
             self.assertEqual(value, 'fallback-value')
             self.assertTrue(loader._use_os_env_fallback)
         finally:
@@ -217,7 +219,6 @@ class TestAgileConfigLoader(unittest.TestCase):
         loader._updated_event.set()
         loader._use_os_env_fallback = True
         loader.stop()
-        self.assertFalse(loader._ready)
         self.assertEqual(loader._config_cache, {})
         self.assertFalse(loader._updated_event.is_set())
         self.assertFalse(loader._use_os_env_fallback)
@@ -230,7 +231,7 @@ class TestAgileConfigLoader(unittest.TestCase):
         loader._terminated = False
         loader.start()
         self._wait_for(
-            lambda: loader._ready and 'database:host' in loader._config_cache,
+            lambda: 'database:host' in loader._config_cache,
             message='Cache did not rehydrate after restart.',
         )
 

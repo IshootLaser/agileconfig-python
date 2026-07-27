@@ -64,13 +64,14 @@ class AgileConfigLoader:
 
             self._ws_client: Optional[Any] = None
             self._config_cache: Dict[str, Any] = {}
-            self._ready = False
-            self._terminated = False
             self._headers: Optional[Dict[str, Any]] = None
             self._running_thread = None
-
-            self._updated_event = threading.Event()
             self._use_os_env_fallback = False
+
+            self._start_event = threading.Event()
+            self._stop_event = threading.Event()
+            self._updated_event = threading.Event()
+            self._lock = threading.Lock()
 
             # Pre-compute auth headers (doesn't change across retries)
             auth_string = f"{self._app_id}:{self._secret}"
@@ -83,6 +84,9 @@ class AgileConfigLoader:
             self.start()
 
             return
+
+    def clear_cache(self):
+        self._config_cache = {}
 
     def _http_url_parser(self) -> str:
         """Derive the HTTP base URL from the configured WebSocket URL."""
@@ -97,7 +101,7 @@ class AgileConfigLoader:
 
     def _get_config_from_server(self):
         url = f'{self._http_url_parser()}/api/config/app/{self._app_id}'
-        r = requests.get(url, headers=self._headers, params={'env': self._env}, timeout=10,)
+        r = requests.get(url, headers=self._headers, params={'env': self._env}, timeout=0.3)
         r.raise_for_status()
         configs = {
             f'{_["group"]}:{_["key"]}' if _["group"] else _["key"]: _['value']
@@ -106,74 +110,149 @@ class AgileConfigLoader:
         self._config_cache = configs
 
     def _start_config_listener(self):
-        while not self._terminated:
-            self._ready = False
-            try:
-                self._get_config_from_server()
-                self._updated_event.set()
-                logger.info(f'Successfully retrieved config from AgileConfig server at {self._url}')
-                self._ready = True
-            except requests.exceptions.HTTPError as e:
-                logger.warning(
-                    f'Failed to retrieve config from server with error {e.__repr__()}. Will retry in 5 seconds.'
-                )
-            except Exception as e:
-                logger.warning(
-                    f'Failed to retrieve config from server with unexpected error {e.__repr__()}. '
-                    f'Will retry in 5 seconds.'
-                )
-            if not self._ready:
-                time.sleep(5)
+        self._start_event.set()
+        while not self._stop_event.wait(1):
+            if not self._lock.acquire_lock(timeout=1):
+                logger.warning('Failed to acquire lock for AgileConfig listener. Retrying...')
                 continue
+            logger.info('lock acquired before initiating websocket connection.')
 
             try:
                 with ws_connect(
                     self._url,
                     additional_headers=self._headers,
                     ping_interval=30,
+                    open_timeout=5,
+                    close_timeout=5,
+                    ping_timeout=5
                 ) as client:
-                    self._ws_client = client
                     if not client.ping().wait(timeout=5):
                         raise TimeoutError('Initial ping to AgileConfig server timed out!')
+                    self._ws_client = client
+                    self._lock.release()
+                    logger.info('lock released after a successful websocket connection')
+
+                    self._get_config_from_server()
+                    self._use_os_env_fallback = False
+                    self._updated_event.set()
+                    logger.info(f'Successfully retrieved config from AgileConfig server at {self._url}')
+
                     logger.info(f"Successfully connected to AgileConfig ws at {self._url}")
-                    for msg in client:
+                    for msg in self._ws_client:
                         logger.info(f'Received message {msg} from {self._url}')
                         if json.loads(msg)['Action'] == 'reload':
                             self._get_config_from_server()
                             logger.info('Successfully updated config.')
             except TimeoutError as e:
-                logger.warning(f'Encountered timeout error: {e.__repr__()}. Will retry in 5 seconds.')
+                logger.warning(f'Encountered timeout error: {e.__repr__()}. Will retry.')
             except requests.exceptions.HTTPError as e:
                 logger.warning(
-                    f'Failed to retrieve config from server with error {e.__repr__()}. Will retry in 5 seconds.'
+                    f'Failed to retrieve config from server with error {e.__repr__()}. Will retry.'
                 )
             except ConnectionClosedError:
-                if self._terminated:
+                if self._stop_event.wait(1):
                     logger.info('Connection closed due to termination. Exiting.')
                     return
-                logger.warning(f'Connection unexpectedly closed. Will retry in 5 seconds.')
+                logger.warning(f'Connection unexpectedly closed. Will retry.')
+
             except Exception as e:
                 logger.warning(
                     f'Encountered unexpected error while subscribing to AgileConfig server: {e.__repr__()}. '
-                    f'Will retry in 5 seconds.'
+                    f'Will retry.'
                 )
-            time.sleep(5)
+            finally:
+                self._use_os_env_fallback = True
+                if self._lock.locked():
+                    self._lock.release()
+                    logger.info('lock released after a websocket termination.')
+
+        logger.info('AgileConfig listener stopped.')
+        self._start_event.clear()
+
+        #
+        #
+        #
+        # while not self._terminated:
+        #     self._ready = False
+        #     try:
+        #         self._get_config_from_server()
+        #         self._updated_event.set()
+        #         logger.info(f'Successfully retrieved config from AgileConfig server at {self._url}')
+        #         self._ready = True
+        #     except requests.exceptions.HTTPError as e:
+        #         logger.warning(
+        #             f'Failed to retrieve config from server with error {e.__repr__()}. Will retry in 5 seconds.'
+        #         )
+        #     except Exception as e:
+        #         logger.warning(
+        #             f'Failed to retrieve config from server with unexpected error {e.__repr__()}. '
+        #             f'Will retry in 5 seconds.'
+        #         )
+        #     if not self._ready:
+        #         self._updated_event.clear()
+        #         if self._stop_event.wait(5):
+        #             return
+        #         continue
+        #
+        #     try:
+        #         with ws_connect(
+        #             self._url,
+        #             additional_headers=self._headers,
+        #             ping_interval=30,
+        #         ) as client:
+        #             if not client.ping().wait(timeout=1):
+        #                 raise TimeoutError('Initial ping to AgileConfig server timed out!')
+        #             self._ws_client = client
+        #             logger.info(f"Successfully connected to AgileConfig ws at {self._url}")
+        #             for msg in self._ws_client:
+        #                 logger.info(f'Received message {msg} from {self._url}')
+        #                 if json.loads(msg)['Action'] == 'reload':
+        #                     self._get_config_from_server()
+        #                     logger.info('Successfully updated config.')
+        #             print(f'asdasdzzzz, break out of loop')
+        #     except TimeoutError as e:
+        #         logger.warning(f'Encountered timeout error: {e.__repr__()}. Will retry in 5 seconds.')
+        #     except requests.exceptions.HTTPError as e:
+        #         logger.warning(
+        #             f'Failed to retrieve config from server with error {e.__repr__()}. Will retry in 5 seconds.'
+        #         )
+        #     except ConnectionClosedError:
+        #         if self._stop_event.wait(1):
+        #             logger.info('Connection closed due to termination. Exiting.')
+        #             return
+        #         logger.warning(f'Connection unexpectedly closed. Will retry in 5 seconds.')
+        #     except Exception as e:
+        #         logger.warning(
+        #             f'Encountered unexpected error while subscribing to AgileConfig server: {e.__repr__()}. '
+        #             f'Will retry in 5 seconds.'
+        #         )
+        #     if self._stop_event.wait(5):
+        #         return
 
     def stop(self):
-        self._terminated = True
+        if not self._start_event.wait(5):
+            logger.info('Agile config loader skipped stop. Agile config listener is not running.')
+            return False
+        logger.info('stop called')
+        self._stop_event.set()
+        if not self._lock.acquire(timeout=10):
+            logger.info('Failed to stop')
+            return False
         if self._ws_client:
             self._ws_client.close()
-            self._ws_client = None
+        if self._lock.locked():
+            self._lock.release()
         if self._running_thread:
             self._running_thread.join(timeout=5)
             if self._running_thread.is_alive():
                 raise RuntimeError('Failed to stop AgileConfig listener thread within timeout.')
             self._running_thread = None
-        self._ready = False
+        self._ws_client = None
         self._config_cache = {}
         if self._updated_event.is_set():
             self._updated_event.clear()
         self._use_os_env_fallback = False
+        return True
 
     def start(self):
         if self._running_thread:
@@ -186,6 +265,7 @@ class AgileConfigLoader:
             )
             return
 
+        self._stop_event.clear()
         self._running_thread = threading.Thread(target=self._start_config_listener, daemon=True)
         self._running_thread.start()
 
