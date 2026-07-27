@@ -31,6 +31,18 @@ loader.stop()
 
 The initial HTTP request populates the cache. When AgileConfig publishes a reload event, the cache is refreshed. If the server cannot be reached within the configured timeout, `get_var_value` reads the variable name from the process environment and ignores its prefix.
 
+## Singleton behavior and safety notes
+
+`AgileConfigLoader` is a process-wide singleton. Creating it multiple times in the same Python process returns the same instance and does not reinitialize it.
+
+Important implications:
+
+- Do not assume a second `AgileConfigLoader(...)` call with different credentials or URL will switch connections. The first initialization wins for the process lifetime.
+- Avoid creating loaders in many modules with different parameters. Prefer one startup location and reuse that instance.
+- Calling `loader.stop()` stops the shared background listener for the singleton. Other parts of your app using the same loader will stop receiving updates.
+- In tests, call `stop()` during teardown to avoid background-thread leakage across test cases.
+- If your process forks workers, create the loader inside each worker process after fork, not in the parent before fork.
+
 ## API
 
 - `AgileConfigLoader(url, app_id, secret, env)` creates the singleton loader and starts its listener.
