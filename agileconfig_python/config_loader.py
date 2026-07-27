@@ -132,6 +132,15 @@ class AgileConfigLoader:
                     self._lock.release()
                     logger.info('lock released after a successful websocket connection')
 
+                    # Subscribe to config updates for this app/env
+                    subscription = json.dumps({
+                        'Action': 'subscribe',
+                        'AppId': self._app_id,
+                        'Env': self._env,
+                    })
+                    self._ws_client.send(subscription)
+                    logger.info(f'Sent subscription message for {self._app_id}/{self._env}')
+
                     self._get_config_from_server()
                     self._use_os_env_fallback = False
                     self._updated_event.set()
