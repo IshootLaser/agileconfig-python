@@ -69,11 +69,12 @@ class TestAgileConfigLoader(unittest.TestCase):
                     json=[{'appId': APP_ID, 'key': key, 'value': value,
                            'group': '', 'comment': ''}],
                 )
-        cls._admin_request(
+        out = cls._admin_request(
             'POST', '/Config/Publish',
             params={'env': APP_ENV},
             json={'appId': APP_ID, 'env': APP_ENV, 'log': 'unit test seed'},
         )
+        print(out.json())
 
     @classmethod
     def setUpClass(cls):
