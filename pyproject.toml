@@ -4,7 +4,7 @@
 
  [project]
  name = "agileconfig-python"
-version = "0.1.1"
+version = "0.1.2"
  description = "Python client for AgileConfig with WebSocket updates and environment fallback"
  readme = "README.md"
  requires-python = ">=3.9"

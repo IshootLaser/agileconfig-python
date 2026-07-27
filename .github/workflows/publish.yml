@@ -10,7 +10,11 @@ permissions:
   id-token: write
 
 jobs:
+  test:
+    uses: ./.github/workflows/reusable-test.yml
+
   publish:
+    needs: test
     runs-on: ubuntu-latest
     environment:
       name: pypi
