@@ -3,14 +3,28 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - "v*"
+      - "v*.*.*"
 
 permissions:
   contents: write
   id-token: write
 
 jobs:
+  validate_tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate release tag format
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag: $TAG"
+            echo "Expected format: vX.Y.Z (for example, v1.2.3)"
+            exit 1
+          fi
+
   test:
+    needs: validate_tag
     uses: ./.github/workflows/reusable-test.yml
 
   publish:

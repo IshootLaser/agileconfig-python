@@ -1,5 +1,10 @@
 # agileconfig-python
 
+[![CI](https://github.com/IshootLaser/agileconfig-python/actions/workflows/ci.yml/badge.svg)](https://github.com/IshootLaser/agileconfig-python/actions/workflows/ci.yml)
+[![Publish](https://github.com/IshootLaser/agileconfig-python/actions/workflows/publish.yml/badge.svg)](https://github.com/IshootLaser/agileconfig-python/actions/workflows/publish.yml)
+[![PyPI version](https://img.shields.io/pypi/v/agileconfig-python.svg)](https://pypi.org/project/agileconfig-python/)
+[![Python versions](https://img.shields.io/pypi/pyversions/agileconfig-python.svg)](https://pypi.org/project/agileconfig-python/)
+
 Python client for [AgileConfig](https://github.com/dotnetcore/AgileConfig). The client loads configuration over HTTP, listens for reload notifications over WebSocket, and falls back to `os.environ` when the server is unavailable.
 
 ## Installation
