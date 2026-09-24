@@ -176,6 +176,28 @@ class TestAgileConfigLoader(unittest.TestCase):
         self.assertEqual(
             loader.get_var_value('host', prefix='database'), 'db.internal')
 
+    def test_get_var_value_with_empty_prefix_reads_bare_key(self):
+        # Group-less configs are cached under their bare key, so an empty prefix
+        # must resolve 'CHAT_URL' instead of ':CHAT_URL'.
+        loader = self.loader
+        loader._updated_event.set()
+        loader._config_cache['CHAT_URL'] = 'https://chat.internal'
+        self.assertEqual(
+            loader.get_var_value('CHAT_URL'), 'https://chat.internal')
+        self.assertEqual(
+            loader.get_var_value('CHAT_URL', prefix=''), 'https://chat.internal')
+
+    def test_get_var_proxy_with_empty_prefix_reads_bare_key(self):
+        # ConfigStrWithUpdate.__str__ delegates to get_var_value, so it inherits
+        # the empty prefix lookup.
+        loader = self.loader
+        loader._updated_event.set()
+        loader._config_cache['CHAT_URL'] = 'v1'
+        proxy = loader.get_var('CHAT_URL')
+        self.assertEqual(str(proxy), 'v1')
+        loader._config_cache['CHAT_URL'] = 'v2'
+        self.assertEqual(str(proxy), 'v2')
+
     def test_fallback_reads_env_by_var_name_when_server_unavailable(self):
         loader = self._reconfigure(url='ws://127.0.0.1:59999/ws')
         os.environ['FALLBACK_TEST_VAR'] = 'fallback-value'

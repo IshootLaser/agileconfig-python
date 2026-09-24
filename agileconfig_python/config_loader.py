@@ -285,7 +285,9 @@ class AgileConfigLoader:
                 f'Prefix {prefix} will be ignored.'
             )
             return os.environ.get(var_name)
-        return self._config_cache.get(f'{prefix}:{var_name}')
+        # Mirror the key built by _get_config_from_server: group-less configs are
+        # cached under their bare key, so an empty prefix must not look up ':name'.
+        return self._config_cache.get(f'{prefix}:{var_name}' if prefix else var_name)
 
     def get_var(self, var_name: str, prefix =''):
         return ConfigStrWithUpdate(self, prefix=prefix, var_name=var_name)
